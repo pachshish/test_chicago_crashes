@@ -52,3 +52,6 @@ def init_crash_chicago():
             print(f"Connection error occurred, id: {row['CRASH_RECORD_ID']} {e}"), 500
 
     client.close()
+
+def create_index():
+    crashes.create_index('BEAT_OF_OCCURRENCE')

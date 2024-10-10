@@ -1,4 +1,3 @@
-from dns.e164 import query
 from flask import  Blueprint, jsonify, request
 from datetime import datetime
 from database.db import crashes, client
