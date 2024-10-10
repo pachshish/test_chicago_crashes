@@ -1,3 +1,4 @@
+from dns.e164 import query
 from flask import  Blueprint, jsonify, request
 from datetime import datetime
 from database.db import crashes, client
@@ -61,5 +62,52 @@ def get_count_crashes_for_time(beat):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+#הצגת הפרמטרים של התאונה לפי הסיבה
+@crashes_bp.route('/get_params_of_cause_crashes/<int:beat>', methods=['GET'])
+def get_params_of_cause_crashes(beat):
+    try:
+        query = [
+            {'$match': {
+                'BEAT_OF_OCCURRENCE': str(beat)
+            }},
+            {'$group': {
+                '_id': '$PRIM_CONTRIBUTORY_CAUSE',
+                'count': {'$sum': 1},
+                'accidents': {'$push': {
+                    'INJURIES_TOTAL': '$INJURIES_TOTAL',
+                    'MOST_SEVERE_INJURY': '$MOST_SEVERE_INJURY',
+                    'INJURIES_FATAL': '$INJURIES_FATAL',
+                    'INJURIES_INCAPACITATING': '$INJURIES_INCAPACITATING',
+                    'INJURIES_NON_INCAPACITATING': '$INJURIES_NON_INCAPACITATING',
+                    'INJURIES_REPORTED_NOT_EVIDENT': '$INJURIES_REPORTED_NOT_EVIDENT',
+                    'INJURIES_NO_INDICATION': '$INJURIES_NO_INDICATION',
+                    'INJURIES_UNKNOWN': '$INJURIES_UNKNOWN'
+                }}
+            }},
+        ]
+        result = list(crashes.aggregate(query))
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
+@crashes_bp.route('/get_statistics_on_accidents/<int:beat>', methods=['GET'])
+def get_injuries_statistics(beat):
+    all_crashes = crashes.find({'BEAT_OF_OCCURRENCE': str(beat)})
+    count_total = 0
+    count_fatal = 0
+    for i in list(all_crashes):
+        count_total += int(i['INJURIES_TOTAL'])
+        count_fatal += int(i['INJURIES_FATAL'])
+
+    events = list(
+        crashes.find({'BEAT_OF_OCCURRENCE': str(beat)}, {'_id': 0, 'CRASH_RECORD_ID': 1, 'CRASH_DATE': 1, 'BEAT_OF_OCCURRENCE': 1}))
+
+    response = {
+        'total_injuries': count_total,
+        'fatal_injuries': count_fatal,
+        'non_fatal_injuries': count_total - count_fatal,
+        'events': events
+    }
+
+    return jsonify(response)
 
